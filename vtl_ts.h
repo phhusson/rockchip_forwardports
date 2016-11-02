@@ -5,7 +5,7 @@
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif
-#include "../tp_suspend.h"
+#include "tp_suspend.h"
 
 
 /*vtl touch IC define*/
