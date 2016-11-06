@@ -478,7 +478,7 @@ static int rockchip_vpu_open(struct file *filp)
 		q->ops = get_enc_queue_ops();
 	} else if (vdev == dev->vfd_dec) {
 		q->ops = get_dec_queue_ops();
-		q->use_dma_bidirectional = 1;
+		q->capture_dma_bidirectional = 1;
 	}
 
 	q->mem_ops = &vb2_dma_contig_memops;
