@@ -185,7 +185,7 @@ void rockchip_vpu_run_done(struct rockchip_vpu_ctx *ctx,
 		struct vb2_v4l2_buffer *dst =
 			to_vb2_v4l2_buffer(&ctx->run.dst->vb.vb2_buf);
 
-		dst->timestamp = src->timestamp;
+		dst->vb2_buf.timestamp = src->vb2_buf.timestamp;
 		vb2_buffer_done(&ctx->run.src->vb.vb2_buf, result);
 		vb2_buffer_done(&ctx->run.dst->vb.vb2_buf, result);
 	}
@@ -673,8 +673,8 @@ static void* rockchip_get_drv_data(struct platform_device *pdev);
 static int rockchip_vpu_probe(struct platform_device *pdev)
 {
 	struct rockchip_vpu_dev *vpu = NULL;
-	DEFINE_DMA_ATTRS(attrs_novm);
-	DEFINE_DMA_ATTRS(attrs_nohugepage);
+	unsigned long attrs_novm;
+	unsigned long attrs_nohugepage;
 	struct video_device *vfd;
 	int ret = 0;
 
@@ -703,19 +703,18 @@ static int rockchip_vpu_probe(struct platform_device *pdev)
 	 * We'll do mostly sequential access, so sacrifice TLB efficiency for
 	 * faster allocation.
 	 */
-	dma_set_attr(DMA_ATTR_ALLOC_SINGLE_PAGES, &attrs_novm);
-
-	dma_set_attr(DMA_ATTR_NO_KERNEL_MAPPING, &attrs_novm);
+	attrs_novm |= DMA_ATTR_ALLOC_SINGLE_PAGES;
+	attrs_novm |= DMA_ATTR_NO_KERNEL_MAPPING;
 	vpu->alloc_ctx = vb2_dma_contig_init_ctx_attrs(&pdev->dev,
-								&attrs_novm);
+								attrs_novm);
 	if (IS_ERR(vpu->alloc_ctx)) {
 		ret = PTR_ERR(vpu->alloc_ctx);
 		goto err_dma_contig;
 	}
 
-	dma_set_attr(DMA_ATTR_ALLOC_SINGLE_PAGES, &attrs_nohugepage);
+	attrs_nohugepage |= DMA_ATTR_ALLOC_SINGLE_PAGES;
 	vpu->alloc_ctx_vm = vb2_dma_contig_init_ctx_attrs(&pdev->dev,
-							  &attrs_nohugepage);
+							  attrs_nohugepage);
 	if (IS_ERR(vpu->alloc_ctx_vm)) {
 		ret = PTR_ERR(vpu->alloc_ctx_vm);
 		goto err_dma_contig_vm;
