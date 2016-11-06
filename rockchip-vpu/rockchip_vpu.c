@@ -483,6 +483,7 @@ static int rockchip_vpu_open(struct file *filp)
 
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+	q->dev = dev->dev;
 
 	ret = vb2_queue_init(q);
 	if (ret) {
@@ -505,6 +506,7 @@ static int rockchip_vpu_open(struct file *filp)
 
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
+	q->dev = dev->dev;
 
 	ret = vb2_queue_init(q);
 	if (ret) {
@@ -673,8 +675,6 @@ static void* rockchip_get_drv_data(struct platform_device *pdev);
 static int rockchip_vpu_probe(struct platform_device *pdev)
 {
 	struct rockchip_vpu_dev *vpu = NULL;
-	unsigned long attrs_novm;
-	unsigned long attrs_nohugepage;
 	struct video_device *vfd;
 	int ret = 0;
 
@@ -697,27 +697,6 @@ static int rockchip_vpu_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "rockchip_vpu_hw_probe failed\n");
 		goto err_hw_probe;
-	}
-
-	/*
-	 * We'll do mostly sequential access, so sacrifice TLB efficiency for
-	 * faster allocation.
-	 */
-	attrs_novm |= DMA_ATTR_ALLOC_SINGLE_PAGES;
-	attrs_novm |= DMA_ATTR_NO_KERNEL_MAPPING;
-	vpu->alloc_ctx = vb2_dma_contig_init_ctx_attrs(&pdev->dev,
-								attrs_novm);
-	if (IS_ERR(vpu->alloc_ctx)) {
-		ret = PTR_ERR(vpu->alloc_ctx);
-		goto err_dma_contig;
-	}
-
-	attrs_nohugepage |= DMA_ATTR_ALLOC_SINGLE_PAGES;
-	vpu->alloc_ctx_vm = vb2_dma_contig_init_ctx_attrs(&pdev->dev,
-							  attrs_nohugepage);
-	if (IS_ERR(vpu->alloc_ctx_vm)) {
-		ret = PTR_ERR(vpu->alloc_ctx_vm);
-		goto err_dma_contig_vm;
 	}
 
 	ret = v4l2_device_register(&pdev->dev, &vpu->v4l2_dev);
@@ -821,10 +800,6 @@ err_enc_alloc:
 err_dummy_enc:
 	v4l2_device_unregister(&vpu->v4l2_dev);
 err_v4l2_dev_reg:
-	vb2_dma_contig_cleanup_ctx(vpu->alloc_ctx_vm);
-err_dma_contig_vm:
-	vb2_dma_contig_cleanup_ctx(vpu->alloc_ctx);
-err_dma_contig:
 	rockchip_vpu_hw_remove(vpu);
 err_hw_probe:
 	pr_debug("%s-- with error\n", __func__);
@@ -851,8 +826,6 @@ static int rockchip_vpu_remove(struct platform_device *pdev)
 	video_unregister_device(vpu->vfd_enc);
 	rockchip_vpu_enc_free_dummy_ctx(vpu);
 	v4l2_device_unregister(&vpu->v4l2_dev);
-	vb2_dma_contig_cleanup_ctx(vpu->alloc_ctx_vm);
-	vb2_dma_contig_cleanup_ctx(vpu->alloc_ctx);
 	rockchip_vpu_hw_remove(vpu);
 
 	vpu_debug_leave();

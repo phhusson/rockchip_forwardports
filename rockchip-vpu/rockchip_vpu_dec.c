@@ -830,7 +830,7 @@ static int rockchip_vpu_queue_setup(struct vb2_queue *vq,
 				  const void *parg,
 				  unsigned int *buf_count,
 				  unsigned int *plane_count,
-				  unsigned int psize[], void *allocators[])
+				  unsigned int psize[], struct device *allocators[])
 {
 	struct rockchip_vpu_ctx *ctx = fh_to_ctx(vq->drv_priv);
 	int ret = 0;
@@ -848,7 +848,9 @@ static int rockchip_vpu_queue_setup(struct vb2_queue *vq,
 			*buf_count = VIDEO_MAX_FRAME;
 
 		psize[0] = ctx->src_fmt.plane_fmt[0].sizeimage;
-		allocators[0] = ctx->dev->alloc_ctx;
+		allocators[0] = ctx->dev->dev;
+		vq->dma_attrs |= DMA_ATTR_ALLOC_SINGLE_PAGES;
+		vq->dma_attrs |= DMA_ATTR_NO_KERNEL_MAPPING;
 		vpu_debug(0, "output psize[%d]: %d\n", 0, psize[0]);
 		break;
 
@@ -862,7 +864,9 @@ static int rockchip_vpu_queue_setup(struct vb2_queue *vq,
 			*buf_count = VIDEO_MAX_FRAME;
 
 		psize[0] = round_up(ctx->dst_fmt.plane_fmt[0].sizeimage, 8);
-		allocators[0] = ctx->dev->alloc_ctx;
+		allocators[0] = ctx->dev->dev;
+		vq->dma_attrs |= DMA_ATTR_ALLOC_SINGLE_PAGES;
+		vq->dma_attrs |= DMA_ATTR_NO_KERNEL_MAPPING;
 
 		if (ctx->vpu_src_fmt->fourcc == V4L2_PIX_FMT_H264_SLICE)
 			/* Add space for appended motion vectors. */

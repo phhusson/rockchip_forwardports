@@ -1063,7 +1063,7 @@ static int rockchip_vpu_queue_setup(struct vb2_queue *vq,
 				  const void *parg,
 				  unsigned int *buf_count,
 				  unsigned int *plane_count,
-				  unsigned int psize[], void *allocators[])
+				  unsigned int psize[], struct device *allocators[])
 {
 	struct rockchip_vpu_ctx *ctx = fh_to_ctx(vq->drv_priv);
 	int ret = 0;
@@ -1083,7 +1083,8 @@ static int rockchip_vpu_queue_setup(struct vb2_queue *vq,
 
 		psize[0] = ctx->dst_fmt.plane_fmt[0].sizeimage;
 		/* Kernel mapping necessary for bitstream post processing. */
-		allocators[0] = ctx->dev->alloc_ctx_vm;
+		allocators[0] = ctx->dev->dev;
+		vq->dma_attrs |= DMA_ATTR_ALLOC_SINGLE_PAGES;
 		vpu_debug(0, "capture psize[%d]: %d\n", 0, psize[0]);
 		break;
 
@@ -1099,7 +1100,9 @@ static int rockchip_vpu_queue_setup(struct vb2_queue *vq,
 		for (i = 0; i < ctx->vpu_src_fmt->num_planes; ++i) {
 			psize[i] = ctx->src_fmt.plane_fmt[i].sizeimage;
 			vpu_debug(0, "output psize[%d]: %d\n", i, psize[i]);
-			allocators[i] = ctx->dev->alloc_ctx;
+			allocators[i] = ctx->dev->dev;
+			vq->dma_attrs |= DMA_ATTR_ALLOC_SINGLE_PAGES;
+			vq->dma_attrs |= DMA_ATTR_NO_KERNEL_MAPPING;
 		}
 		break;
 
