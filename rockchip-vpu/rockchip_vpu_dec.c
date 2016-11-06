@@ -827,7 +827,6 @@ static const struct v4l2_ioctl_ops rockchip_vpu_dec_ioctl_ops = {
 };
 
 static int rockchip_vpu_queue_setup(struct vb2_queue *vq,
-				  const void *parg,
 				  unsigned int *buf_count,
 				  unsigned int *plane_count,
 				  unsigned int psize[], struct device *allocators[])
