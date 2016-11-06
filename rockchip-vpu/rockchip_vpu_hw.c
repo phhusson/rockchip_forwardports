@@ -28,7 +28,8 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 
-#include <linux/dma-iommu.h>
+#include <linux/iommu.h>
+#include <asm/dma-iommu.h>
 
 /* Various parameters specific to VP8 encoder. */
 #define VP8_KEY_FRAME_HDR_SIZE                  10
@@ -156,50 +157,35 @@ static int rockchip_vpu_iommu_init(struct rockchip_vpu_dev *vpu)
 {
 	int ret;
 
+	vpu->mapping = arm_iommu_create_mapping(&platform_bus_type,
+			0x10000000, SZ_2G);
+	if (IS_ERR(vpu->mapping)) {
+		ret = PTR_ERR(vpu->mapping);
+		return ret;
+	}
 	vpu->dev->dma_parms = devm_kzalloc(vpu->dev,
 					   sizeof(*vpu->dev->dma_parms),
 					   GFP_KERNEL);
 	if (!vpu->dev->dma_parms)
-		return -ENOMEM;
+		goto err_release_mapping;
 
-	vpu->domain = iommu_domain_alloc(vpu->dev->bus);
-	if (!vpu->domain) {
-		ret = -ENOMEM;
-		goto err_free_parms;
-	}
+	dma_set_max_seg_size(vpu->dev, 0xffffffffu);
 
-	ret = iommu_get_dma_cookie(vpu->domain);
+	ret = arm_iommu_attach_device(vpu->dev, vpu->mapping);
 	if (ret)
-		goto err_free_domain;
-
-	ret = dma_set_coherent_mask(vpu->dev, DMA_BIT_MASK(32));
-	if (ret)
-		goto err_put_cookie;
-
-	dma_set_max_seg_size(vpu->dev, DMA_BIT_MASK(32));
-
-	ret = iommu_attach_device(vpu->domain, vpu->dev);
-	if (ret)
-		goto err_put_cookie;
-
-	common_iommu_setup_dma_ops(vpu->dev, 0x10000000, SZ_2G,
-				   vpu->domain->ops);
+		goto err_release_mapping;
 
 	return 0;
 
-err_put_cookie:
-	iommu_put_dma_cookie(vpu->domain);
-err_free_domain:
-	iommu_domain_free(vpu->domain);
-err_free_parms:
+err_release_mapping:
+	arm_iommu_release_mapping(vpu->mapping);
 	return ret;
 }
 
 static void rockchip_vpu_iommu_cleanup(struct rockchip_vpu_dev *vpu)
 {
-	iommu_detach_device(vpu->domain, vpu->dev);
-	iommu_put_dma_cookie(vpu->domain);
-	iommu_domain_free(vpu->domain);
+	arm_iommu_detach_device(vpu->dev);
+	arm_iommu_release_mapping(vpu->mapping);
 }
 #else /* CONFIG_ROCKCHIP_IOMMU */
 static inline int rockchip_vpu_iommu_init(struct rockchip_vpu_dev *vpu)
