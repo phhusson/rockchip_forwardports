@@ -1,3 +1,13 @@
+== How to build me ==
+
+Assuming you have your kernel build environment in KERNEL_ARGS (i.e. ARCH=arm CROSS_COMPILE=...).  
+Assuming you have your kernel source tree in KERNEL_SRC.  
+To build, use:
+> ${KERNEL_ARGS} make M=$PWD -C ${KERNEL_SRC} CONFIG_MALI_MIDGARD=m CONFIG_MALI_DEVFREQ=y CONFIG_MALI_DMA_FENCE=y CONFIG_MALI_EXPERT=y CONFIG_MALI_PLATFORM_THIRDPARTY=y CONFIG_MALI_PLATFORM_THIRDPARTY_NAME=rk
+
+This will generate rockchip-vpu.ko, mali_kbase.ko and vtl_ts_ct_ct36x.ko.  
+You'll need additional DT modifications to enable those feature, see below.
+
 == VPU (h264 decode) ==
 
 To get rockchip VPU working on a mainline kernel, you'll need to change your DTS.  
