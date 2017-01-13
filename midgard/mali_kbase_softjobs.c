@@ -481,7 +481,7 @@ static int kbasep_soft_event_wait(struct kbase_jd_atom *katom)
 	/* Schedule cancellation of this atom after a period if it is
 	 * not active */
 	remaining = hrtimer_get_remaining(&kctx->soft_event_timeout);
-	if (remaining.tv64 <= 0) {
+	if (ktime_compare(remaining, ktime_set(0, 0)) <= 0) {
 		int timeout_ms = atomic_read(
 				&kctx->kbdev->js_data.soft_event_timeout_ms);
 		hrtimer_start(&kctx->soft_event_timeout,

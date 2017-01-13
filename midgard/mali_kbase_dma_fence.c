@@ -22,7 +22,7 @@
 #include "mali_kbase_dma_fence.h"
 
 #include <linux/atomic.h>
-#include <linux/fence.h>
+#include <linux/dma-fence.h>
 #include <linux/list.h>
 #include <linux/lockdep.h>
 #include <linux/mutex.h>
@@ -54,19 +54,19 @@ kbase_dma_fence_waiters_remove(struct kbase_jd_atom *katom)
 }
 
 static const char *
-kbase_dma_fence_get_driver_name(struct fence *fence)
+kbase_dma_fence_get_driver_name(struct dma_fence *fence)
 {
 	return kbase_drv_name;
 }
 
 static const char *
-kbase_dma_fence_get_timeline_name(struct fence *fence)
+kbase_dma_fence_get_timeline_name(struct dma_fence *fence)
 {
 	return kbase_timeline_name;
 }
 
 static bool
-kbase_dma_fence_enable_signaling(struct fence *fence)
+kbase_dma_fence_enable_signaling(struct dma_fence *fence)
 {
 	/* If in the future we need to add code here remember to
 	 * to get a reference to the fence and release it when signaling
@@ -76,30 +76,30 @@ kbase_dma_fence_enable_signaling(struct fence *fence)
 }
 
 static void
-kbase_dma_fence_fence_value_str(struct fence *fence, char *str, int size)
+kbase_dma_fence_fence_value_str(struct dma_fence *fence, char *str, int size)
 {
 	snprintf(str, size, "%u", fence->seqno);
 }
 
-static const struct fence_ops kbase_dma_fence_ops = {
+static const struct dma_fence_ops kbase_dma_fence_ops = {
 	.get_driver_name = kbase_dma_fence_get_driver_name,
 	.get_timeline_name = kbase_dma_fence_get_timeline_name,
 	.enable_signaling = kbase_dma_fence_enable_signaling,
 	/* Use the default wait */
-	.wait = fence_default_wait,
+	.wait = dma_fence_default_wait,
 	.fence_value_str = kbase_dma_fence_fence_value_str,
 };
 
-static struct fence *
+static struct dma_fence *
 kbase_dma_fence_new(unsigned int context, unsigned int seqno)
 {
-	struct fence *fence;
+	struct dma_fence *fence;
 
 	fence = kzalloc(sizeof(*fence), GFP_KERNEL);
 	if (!fence)
 		return NULL;
 
-	fence_init(fence,
+	dma_fence_init(fence,
 		   &kbase_dma_fence_ops,
 		   &kbase_dma_fence_lock,
 		   context,
@@ -189,7 +189,7 @@ kbase_dma_fence_free_callbacks(struct kbase_jd_atom *katom)
 		bool ret;
 
 		/* Cancel callbacks that hasn't been called yet. */
-		ret = fence_remove_callback(cb->fence, &cb->fence_cb);
+		ret = dma_fence_remove_callback(cb->fence, &cb->fence_cb);
 		if (ret) {
 			/* Fence had not signaled, clean up after
 			 * canceling.
@@ -197,7 +197,7 @@ kbase_dma_fence_free_callbacks(struct kbase_jd_atom *katom)
 			atomic_dec(&katom->dma_fence.dep_count);
 		}
 
-		fence_put(cb->fence);
+		dma_fence_put(cb->fence);
 		list_del(&cb->node);
 		kfree(cb);
 	}
@@ -270,8 +270,8 @@ out:
 
 static int
 kbase_dma_fence_add_callback(struct kbase_jd_atom *katom,
-			     struct fence *fence,
-			     fence_func_t callback)
+			     struct dma_fence *fence,
+			     dma_fence_func_t callback)
 {
 	int err = 0;
 	struct kbase_dma_fence_cb *kbase_fence_cb;
@@ -280,22 +280,22 @@ kbase_dma_fence_add_callback(struct kbase_jd_atom *katom,
 	if (!kbase_fence_cb)
 		return -ENOMEM;
 
-	fence_get(fence);
+	dma_fence_get(fence);
 
 	kbase_fence_cb->fence = fence;
 	kbase_fence_cb->katom = katom;
 	INIT_LIST_HEAD(&kbase_fence_cb->node);
 
-	err = fence_add_callback(fence, &kbase_fence_cb->fence_cb, callback);
+	err = dma_fence_add_callback(fence, &kbase_fence_cb->fence_cb, callback);
 	if (err == -ENOENT) {
 		/* Fence signaled, clear the error and return */
 		err = 0;
 		kbase_fence_cb->fence = NULL;
-		fence_put(fence);
+		dma_fence_put(fence);
 		kfree(kbase_fence_cb);
 	} else if (err) {
 		/* Do nothing, just return the error */
-		fence_put(fence);
+		dma_fence_put(fence);
 		kfree(kbase_fence_cb);
 	} else {
 		atomic_inc(&katom->dma_fence.dep_count);
@@ -307,7 +307,7 @@ kbase_dma_fence_add_callback(struct kbase_jd_atom *katom,
 }
 
 static void
-kbase_dma_fence_cb(struct fence *fence, struct fence_cb *cb)
+kbase_dma_fence_cb(struct dma_fence *fence, struct dma_fence_cb *cb)
 {
 	struct kbase_dma_fence_cb *kcb = container_of(cb,
 				struct kbase_dma_fence_cb,
@@ -334,8 +334,8 @@ kbase_dma_fence_add_reservation_callback(struct kbase_jd_atom *katom,
 					 struct reservation_object *resv,
 					 bool exclusive)
 {
-	struct fence *excl_fence = NULL;
-	struct fence **shared_fences = NULL;
+	struct dma_fence *excl_fence = NULL;
+	struct dma_fence **shared_fences = NULL;
 	unsigned int shared_count = 0;
 	int err, i;
 
@@ -399,7 +399,7 @@ int kbase_dma_fence_wait(struct kbase_jd_atom *katom,
 			 struct kbase_dma_fence_resv_info *info)
 {
 	int err, i;
-	struct fence *fence;
+	struct dma_fence *fence;
 	struct ww_acquire_ctx ww_ctx;
 
 	lockdep_assert_held(&katom->kctx->jctx.lock);
@@ -498,8 +498,8 @@ void kbase_dma_fence_signal(struct kbase_jd_atom *katom)
 	KBASE_DEBUG_ASSERT(atomic_read(&katom->dma_fence.dep_count) == -1);
 
 	/* Signal the atom's fence. */
-	fence_signal(katom->dma_fence.fence);
-	fence_put(katom->dma_fence.fence);
+	dma_fence_signal(katom->dma_fence.fence);
+	dma_fence_put(katom->dma_fence.fence);
 	katom->dma_fence.fence = NULL;
 
 	kbase_dma_fence_free_callbacks(katom);

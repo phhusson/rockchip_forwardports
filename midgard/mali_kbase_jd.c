@@ -863,7 +863,7 @@ bool jd_submit_atom(struct kbase_context *kctx,
 
 	core_req = user_atom->core_req;
 
-	katom->start_timestamp.tv64 = 0;
+	katom->start_timestamp = ktime_set(0, 0);
 	katom->time_spent_us = 0;
 	katom->udata = user_atom->udata;
 	katom->kctx = kctx;
@@ -1731,7 +1731,7 @@ int kbase_jd_init(struct kbase_context *kctx)
 		kctx->jctx.atoms[i].status = KBASE_JD_ATOM_STATE_UNUSED;
 
 #ifdef CONFIG_MALI_DMA_FENCE
-		kctx->jctx.atoms[i].dma_fence.context = fence_context_alloc(1);
+		kctx->jctx.atoms[i].dma_fence.context = dma_fence_context_alloc(1);
 		atomic_set(&kctx->jctx.atoms[i].dma_fence.seqno, 0);
 		INIT_LIST_HEAD(&kctx->jctx.atoms[i].dma_fence.callbacks);
 #endif

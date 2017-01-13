@@ -1857,7 +1857,7 @@ static int kbase_cpu_vm_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 
 	/* we don't use vmf->pgoff as it's affected by our mmap with
 	 * offset being a GPU VA or a cookie */
-	rel_pgoff = ((unsigned long)vmf->virtual_address - map->vm_start)
+	rel_pgoff = ((unsigned long)vmf->address - map->vm_start)
 			>> PAGE_SHIFT;
 
 	kbase_gpu_vm_lock(map->kctx);
