@@ -31,3 +31,11 @@
 # Debug files
 *.dSYM/
 *.su
+
+*.mod.c
+*.o.cmd
+*.ko.cmd
+*.swp
+*.mod
+Makefile.symvers
+modules.order
