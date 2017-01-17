@@ -4,6 +4,7 @@ menu "VCODEC"
 config RK_VCODEC
 	tristate "VCODEC (VPU HEVC) service driver in kernel"
 	depends on ARCH_ROCKCHIP
+	depends on ROCKCHIP_PM_DOMAINS
 	default n
 
 endmenu

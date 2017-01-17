@@ -616,7 +616,7 @@ static int vpu_get_clk(struct vpu_service_info *pservice)
 #endif
 }
 
-extern int rockchip_pmu_idle_request(struct device *dev, bool idle);
+extern int rockchip_pmu_set_idle_request(struct device *dev, bool idle);
 static void _vpu_reset(struct vpu_subdev_data *data)
 {
 	struct vpu_service_info *pservice = data->pservice;
@@ -632,7 +632,7 @@ static void _vpu_reset(struct vpu_subdev_data *data)
 #ifdef CONFIG_RESET_CONTROLLER
 	dev_info(pservice->dev, "for 3288/3368...");
 	if (of_machine_is_compatible("rockchip,rk3288"))
-		rockchip_pmu_idle_request(pservice->dev, true);
+		rockchip_pmu_set_idle_request(pservice->dev, true);
 	if (pservice->rst_a && pservice->rst_h) {
 		dev_info(pservice->dev, "vpu reset in\n");
 
@@ -654,7 +654,7 @@ static void _vpu_reset(struct vpu_subdev_data *data)
 		reset_control_deassert(pservice->rst_v);
 	}
 	if (of_machine_is_compatible("rockchip,rk3288"))
-		rockchip_pmu_idle_request(pservice->dev, false);
+		rockchip_pmu_set_idle_request(pservice->dev, false);
 #endif
 }
 
